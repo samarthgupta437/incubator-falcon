@@ -86,6 +86,10 @@
     </profiles>
     <dependencies>
         <dependency>
+            <groupId>org.apache.falcon</groupId>
+            <artifactId>falcon-client</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.apache.falcon.regression</groupId>
             <artifactId>falcon-merlin-core</artifactId>
         </dependency>
