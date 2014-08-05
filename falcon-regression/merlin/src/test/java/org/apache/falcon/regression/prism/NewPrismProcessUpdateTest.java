@@ -631,6 +631,7 @@ public class NewPrismProcessUpdateTest extends BaseTestClass {
                 Util.readEntityName(bundles[1].getProcessData()), EntityType.PROCESS);
 
         boolean doesExist = false;
+        OozieUtil.createMissingDependencies(cluster3, EntityType.PROCESS, bundles[1].getProcessName(), 0);
         while (status != Job.Status.SUCCEEDED && status != Job.Status.FAILED
                 &&
                 status != Job.Status.DONEWITHERROR) {
@@ -1683,7 +1684,7 @@ public class NewPrismProcessUpdateTest extends BaseTestClass {
             OozieUtil.createMissingDependencies(coloHelper, bundleId);
 
             //keep waiting
-            LOGGER.info("bundle not over .. waiting");
+            LOGGER.info("bundle " + bundleId + " not over .. waiting");
             TimeUtil.sleepSeconds(60);
             wait++;
             if (wait == minutes) {
