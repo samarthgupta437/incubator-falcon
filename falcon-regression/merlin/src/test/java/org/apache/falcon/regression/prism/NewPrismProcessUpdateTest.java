@@ -90,12 +90,15 @@ public class NewPrismProcessUpdateTest extends BaseTestClass {
         LOGGER.info("test name: " + method.getName());
         Bundle b = BundleUtil.readUpdateBundle();
         bundles[0] = new Bundle(b, cluster1);
+        bundles[0].generateUniqueBundle();
         bundles[1] = new Bundle(b, cluster2);
+        bundles[1].generateUniqueBundle();
         bundles[2] = new Bundle(b, cluster3);
+        bundles[2].generateUniqueBundle();
         setBundleWFPath(bundles[0], bundles[1], bundles[2]);
         bundles[1].addClusterToBundle(bundles[2].getClusters().get(0),
                 ClusterType.TARGET, null, null);
-        usualGrind(cluster3, bundles[1]);
+        usualGrind(bundles[1]);
         Util.restartService(cluster3.getClusterHelper());
     }
 
@@ -220,8 +223,6 @@ public class NewPrismProcessUpdateTest extends BaseTestClass {
 
         dualComparison(prism, cluster3, bundles[1].getProcessData());
 
-        OozieUtil.createMissingDependencies(cluster3, EntityType.PROCESS,
-                bundles[1].getProcessName(), 0);
         waitingForBundleFinish(cluster3, oldBundleId, 15);
         //ensure that the running process has new coordinators created; while the submitted
         // one is updated correctly.
@@ -458,6 +459,7 @@ public class NewPrismProcessUpdateTest extends BaseTestClass {
                 Util.readEntityName(bundles[1].getProcessData()), EntityType.PROCESS);
 
         boolean doesExist = false;
+        OozieUtil.createMissingDependencies(cluster3, EntityType.PROCESS, bundles[1].getProcessName(), 0);
         while (status != Job.Status.SUCCEEDED && status != Job.Status.FAILED
                 &&
                 status != Job.Status.DONEWITHERROR) {
@@ -555,8 +557,6 @@ public class NewPrismProcessUpdateTest extends BaseTestClass {
         bundles[1].verifyDependencyListing(cluster2);
 
         dualComparison(prism, cluster3, bundles[1].getProcessData());
-        OozieUtil.createMissingDependencies(cluster3, EntityType.PROCESS,
-                bundles[1].getProcessName(), 0);
         waitingForBundleFinish(cluster3, oldBundleId);
         //ensure that the running process has new coordinators created; while the submitted
         // one is updated
@@ -649,10 +649,6 @@ public class NewPrismProcessUpdateTest extends BaseTestClass {
         }
 
         Assert.assertTrue(doesExist, "Er! The desired concurrency levels are never reached!!!");
-
-        OozieUtil.createMissingDependencies(cluster3, EntityType.PROCESS,
-                bundles[1].getProcessName(), 0);
-
         waitingForBundleFinish(cluster3, oldBundleId);
 
         int finalNumberOfInstances =
@@ -732,6 +728,7 @@ public class NewPrismProcessUpdateTest extends BaseTestClass {
                         Util.readEntityName(bundles[1].getProcessData()), EntityType.PROCESS);
 
         boolean doesExist = false;
+        OozieUtil.createMissingDependencies(cluster3, EntityType.PROCESS, bundles[1].getProcessName(), 0);
         while (status != Job.Status.SUCCEEDED && status != Job.Status.FAILED
                 &&
                 status != Job.Status.DONEWITHERROR) {
@@ -1621,11 +1618,11 @@ public class NewPrismProcessUpdateTest extends BaseTestClass {
         }
     }
 
-    private Bundle usualGrind(ColoHelper prism, Bundle b) throws Exception {
+    private Bundle usualGrind(Bundle b) throws Exception {
         b.setInputFeedDataPath(inputFeedPath);
         String prefix = b.getFeedDataPathPrefix();
         HadoopUtil.deleteDirIfExists(prefix.substring(1), cluster1FS);
-        HadoopUtil.lateDataReplenish(cluster1FS, 60, 1, prefix, null);
+        //HadoopUtil.lateDataReplenish(cluster1FS, 60, 1, prefix, null);
         final String starTime = TimeUtil.getTimeWrtSystemTime(3);
         String endTime = TimeUtil.getTimeWrtSystemTime(7);
         b.setProcessPeriodicity(1, TimeUnit.minutes);
@@ -1682,6 +1679,9 @@ public class NewPrismProcessUpdateTest extends BaseTestClass {
         throws Exception {
         int wait = 0;
         while (!OozieUtil.isBundleOver(coloHelper, bundleId)) {
+            //create missing dependencies if new instance have come up
+            OozieUtil.createMissingDependencies(coloHelper, bundleId);
+
             //keep waiting
             LOGGER.info("bundle not over .. waiting");
             TimeUtil.sleepSeconds(60);
