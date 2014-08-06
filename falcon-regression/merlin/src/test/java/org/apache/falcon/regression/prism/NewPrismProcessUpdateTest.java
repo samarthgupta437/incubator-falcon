@@ -88,6 +88,7 @@ public class NewPrismProcessUpdateTest extends BaseTestClass {
     @BeforeMethod(alwaysRun = true)
     public void testSetup(Method method) throws Exception {
         LOGGER.info("test name: " + method.getName());
+        Util.restartService(cluster3.getClusterHelper());
         Bundle b = BundleUtil.readUpdateBundle();
         bundles[0] = new Bundle(b, cluster1);
         bundles[0].generateUniqueBundle();
@@ -99,7 +100,6 @@ public class NewPrismProcessUpdateTest extends BaseTestClass {
         bundles[1].addClusterToBundle(bundles[2].getClusters().get(0),
                 ClusterType.TARGET, null, null);
         usualGrind(bundles[1]);
-        Util.restartService(cluster3.getClusterHelper());
     }
 
     @BeforeClass(alwaysRun = true)
@@ -206,6 +206,7 @@ public class NewPrismProcessUpdateTest extends BaseTestClass {
         bundles[1].setProcessValidity(newStartTime, newEndTime);
         bundles[1].setProcessConcurrency(10);
 
+        OozieUtil.createMissingDependencies(cluster3, EntityType.PROCESS, bundles[1].getProcessName(), 0);
         waitForProcessToReachACertainState(cluster3, bundles[1], Job.Status.RUNNING);
 
         LOGGER.info("updated process: " + Util.prettyPrintXml(bundles[1].getProcessData()));
@@ -751,7 +752,7 @@ public class NewPrismProcessUpdateTest extends BaseTestClass {
         OozieUtil.verifyNewBundleCreation(cluster3, InstanceUtil
                         .getLatestBundleID(cluster3,
                                 Util.readEntityName(bundles[1].getProcessData()), EntityType.PROCESS),
-                oldNominalTimes, Util.readEntityName(bundles[1].getProcessData()), false,
+                oldNominalTimes, bundles[1].getProcessData(), false,
                 true
         );
 
@@ -1344,6 +1345,7 @@ public class NewPrismProcessUpdateTest extends BaseTestClass {
     @Test(groups = { "multiCluster" }, timeOut = 1200000)
     public void updateProcessRollStartTimeBackwardsToPastInEachColoWithOneProcessRunning()
         throws Exception {
+        bundles[1].setProcessValidity(TimeUtil.getTimeWrtSystemTime(-1), TimeUtil.getTimeWrtSystemTime(7));
         bundles[1].submitBundle(prism);
         //now to schedule in 1 colo and let it remain in another
         AssertUtil.assertSucceeded(
@@ -1369,11 +1371,11 @@ public class NewPrismProcessUpdateTest extends BaseTestClass {
         ));
 
         waitForProcessToReachACertainState(cluster3, bundles[1], Job.Status.RUNNING);
-
+        OozieUtil.createMissingDependencies(cluster3, EntityType.PROCESS, bundles[1].getProcessName(), 0);
         AssertUtil.assertSucceeded(
                 prism.getProcessHelper()
                         .update(bundles[1].getProcessData(), bundles[1].getProcessData()));
-
+        TimeUtil.sleepTill(TimeUtil.getTimeWrtSystemTime(4));
         OozieUtil.verifyNewBundleCreation(cluster3, oldBundleId, oldNominalTimes,
                 bundles[1].getProcessData(), true, true);
         bundles[1].verifyDependencyListing(cluster2);
@@ -1623,7 +1625,6 @@ public class NewPrismProcessUpdateTest extends BaseTestClass {
         b.setInputFeedDataPath(inputFeedPath);
         String prefix = b.getFeedDataPathPrefix();
         HadoopUtil.deleteDirIfExists(prefix.substring(1), cluster1FS);
-        //HadoopUtil.lateDataReplenish(cluster1FS, 60, 1, prefix, null);
         final String starTime = TimeUtil.getTimeWrtSystemTime(3);
         String endTime = TimeUtil.getTimeWrtSystemTime(7);
         b.setProcessPeriodicity(1, TimeUnit.minutes);
